@@ -1,11 +1,9 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
-from django.contrib.auth import settings
 from .utils.image_dir_path import project_dir_path, skill_dir_path
 
 
 class Portfolio(models.Model):
-    owner = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    owner = models.ForeignKey('auth.User', related_name='porfolios', on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
 
     class Meta:
