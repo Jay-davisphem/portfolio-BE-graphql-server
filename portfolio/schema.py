@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+import django
 
 import graphene
 from graphene_django import DjangoObjectType
@@ -124,8 +125,46 @@ class DeleteUser(graphene.Mutation):
             return DeleteUser(message=f"{user} deleted!", ok=True)
         return DeleteUser(message="Not deleted!", ok=False)
 
-class CreatePortfolio:
-    ...
+
+class CreatePortfolio(graphene.Mutation):
+    ok = graphene.Boolean()
+    message = graphene.String()
+
+    class Arguments:
+        title = graphene.String(required=True)
+
+    @login_required
+    def mutate(self, info, title):
+        try:
+            Portfolio.objects.create(owner=info.context.user, title=title)
+            ok = True
+            message = f"Portfolio {title} created for user {info.context.user.username}"
+        except django.db.utils.IntegrityError as err:
+            ok = False
+            message = f"{err}"
+        except:
+            ok = False
+            message = (
+                f"Cannot create portfolio {title} for user {info.context.user.username}"
+            )
+        return CreatePortfolio(ok=ok, message=message)
+
+
+class CreateProject(graphene.Mutation):
+    ok = graphene.Boolean()
+    message = graphene.String()
+
+    class Arguments:
+        name = graphene.String()
+        description = graphene.String()
+        image = graphene.String()
+        deployed_at = graphene.String()
+        code_url = graphene.String()
+
+    @login_required
+    def mutate(self, info, **kwargs):
+        return CreateProject(ok=True, message="")
+
 
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
@@ -134,6 +173,7 @@ class Mutation(graphene.ObjectType):
     create_user = CreateUser.Field()
     update_user = UpdateUser.Field()
     delete_user = DeleteUser.Field()
-
+    create_portfolio = CreatePortfolio.Field()
+    create_portfolio = CreateProject.Field() 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
