@@ -1,16 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
+from django.contrib.auth import settings
 from .utils.image_dir_path import project_dir_path, skill_dir_path
 
 
-class CustomUser(AbstractUser):
-    def __str__(self):
-        return f"{self.username}:<{self.email}>"
-
-
 class Portfolio(models.Model):
-    owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    owner = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
 
     class Meta:
@@ -19,7 +14,7 @@ class Portfolio(models.Model):
         ]
 
     def __str__(self):
-        return f"Portfolio[{self.title} | {self.owner.username}]"
+        return f"Portfolio:{self.title}:{self.owner.username}"
 
 
 class Project(models.Model):
@@ -34,7 +29,7 @@ class Project(models.Model):
         constraints = [models.UniqueConstraint(fields=["name"], name="unique project")]
 
     def __str__(self):
-        return f"Project[{self.name}<{self.portfolio.owner.username}>]"
+        return f"Project:{self.name}:{self.portfolio.owner.username}"
 
 
 class Skill(models.Model):
@@ -46,4 +41,4 @@ class Skill(models.Model):
         constraints = [models.UniqueConstraint(fields=["name"], name="unique skill")]
 
     def __str__(self):
-        return f"Skill[{self.name}<{self.portfolio.owner.username}>]"
+        return f"Skill:{self.name}:{self.portfolio.owner.username}"
