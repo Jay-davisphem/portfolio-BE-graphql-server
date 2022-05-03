@@ -48,17 +48,92 @@ class Query(graphene.ObjectType):
 
     @login_required
     def resolve_get_portfolio(self, info, title):
-        return Portfolio.objects.get(title=title)
+        return Portfolio.objects.select_related("owner").get(
+            owner=info.context.user, title=title
+        )
 
     @login_required
     def resolve_get_portfolios(self, info):
         return Portfolio.objects.select_related("owner").filter(owner=info.context.user)
 
 
+class CreateUser(graphene.Mutation):
+    message = graphene.String()
+    user = graphene.Field(UserType)
+    ok = graphene.Boolean()
+
+    class Arguments:
+        username = graphene.String(required=True)
+        password = graphene.String(required=True)
+        email = graphene.String()
+
+    def mutate(self, info, username, password, email=None):
+        if info.context.user.is_anonymous:
+            user = User.objects.create_user(username=username, email=email)
+            user.set_password(password)
+            user.save()
+            return CreateUser(
+                ok=True, user=user, message=f"Successfully created user {user.username}"
+            )
+        return CreateUser(
+            ok=False,
+            message=f"User {info.context.user.username} is logged in!. Failed to create new account ):.",
+            user=info.context.user,
+        )
+
+
+class UpdateUser(graphene.Mutation):
+    message = graphene.String()
+    user = graphene.Field(UserType)
+    ok = graphene.Boolean()
+
+    class Arguments:
+        username = graphene.String()
+        password = graphene.String()
+        email = graphene.String()
+
+    @login_required
+    def mutate(self, info, **kwargs):
+        username = info.context.user.username
+        email = info.context.user.email
+
+        user = get_user_model().objects.get(username=username)
+
+        if user or user.is_superuser:
+            user.username = kwargs.get("username", username)
+            user.email = kwargs.get("email", email)
+            if kwargs.get("password", ""):
+                user.set_password(kwargs.get("password"))
+            user.save()
+
+            return UpdateUser(ok=True, message="User details updated", user=user)
+        return UpdateUser(ok=False, message="Can only update personal data!")
+
+
+class DeleteUser(graphene.Mutation):
+    message = graphene.String()
+    ok = graphene.Boolean()
+
+    class Arguments:
+        username = graphene.String(required=True)
+
+    @login_required
+    def mutate(self, info, username):
+        if info.context.user.is_superuser and info.context.user.username != username:
+            user = get_user_model().objects.get(username=username).delete()
+            return DeleteUser(message=f"{user} deleted!", ok=True)
+        return DeleteUser(message="Not deleted!", ok=False)
+
+class CreatePortfolio:
+    ...
+
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
+    create_user = CreateUser.Field()
+    update_user = UpdateUser.Field()
+    delete_user = DeleteUser.Field()
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
