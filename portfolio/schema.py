@@ -21,6 +21,18 @@ class PortfolioType(DjangoObjectType):
         fields = "__all__"
 
 
+class ProjectType(DjangoObjectType):
+    class Meta:
+        model = Project
+        fields = "__all__"
+
+
+class SkillType(DjangoObjectType):
+    class Meta:
+        model = Skill
+        fields = "__all__"
+
+
 class Query(graphene.ObjectType):
     me = graphene.Field(UserType)
     users = graphene.List(UserType)
