@@ -3,6 +3,8 @@ import django
 
 import graphene
 from graphene_django import DjangoObjectType
+from graphene_file_upload.scalars import Upload
+
 import graphql_jwt
 from graphql_jwt.decorators import login_required
 from .models import Portfolio, Project, Skill
@@ -155,15 +157,39 @@ class CreateProject(graphene.Mutation):
     message = graphene.String()
 
     class Arguments:
-        name = graphene.String()
-        description = graphene.String()
-        image = graphene.String()
-        deployed_at = graphene.String()
+        name = graphene.String(required=True)
+        description = graphene.String(required=True)
+        image = Upload(description="Project image")
+        deployed_at = graphene.String(required=True)
         code_url = graphene.String()
 
     @login_required
     def mutate(self, info, **kwargs):
-        return CreateProject(ok=True, message="")
+
+        name = kwargs.get("name")
+        description = kwargs.get("description")
+        image = kwargs.get("image", None)
+        de_at = kwargs.get("deployed_at")
+        co_u = kwargs.get("code_url", "")
+
+        file_data = {}
+        if image:
+            file_data = {"image": image}
+
+        try:
+            project = Project.objects.create(
+                name=name,
+                description=description,
+                image=image,
+                deployed_at=de_at,
+                code_url=co_u,
+            )
+            message = f"Successfully created {project.name} with {project.image.photo}"
+            ok = True
+        except Exception as err:
+            message = f"Fail to create {project.name}"
+            ok = False
+        return CreateProject(ok=ok, message=message)
 
 
 class Mutation(graphene.ObjectType):
@@ -174,6 +200,7 @@ class Mutation(graphene.ObjectType):
     update_user = UpdateUser.Field()
     delete_user = DeleteUser.Field()
     create_portfolio = CreatePortfolio.Field()
-    create_portfolio = CreateProject.Field() 
+    create_project = CreateProject.Field()
+
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
