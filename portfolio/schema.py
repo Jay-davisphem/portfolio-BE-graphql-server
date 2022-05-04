@@ -5,6 +5,7 @@ import graphene
 from graphene_django import DjangoObjectType
 from graphene_file_upload.scalars import Upload
 
+import graphql
 import graphql_jwt
 from graphql_jwt.decorators import login_required
 from .models import Portfolio, Project, Skill
@@ -162,33 +163,41 @@ class CreateProject(graphene.Mutation):
         image = Upload(description="Project image")
         deployed_at = graphene.String(required=True)
         code_url = graphene.String()
+        portfolio_title = graphene.String()
 
     @login_required
     def mutate(self, info, **kwargs):
 
         name = kwargs.get("name")
         description = kwargs.get("description")
-        image = kwargs.get("image", None)
         de_at = kwargs.get("deployed_at")
         co_u = kwargs.get("code_url", "")
-
-        file_data = {}
-        if image:
-            file_data = {"image": image}
-
+        post = info.context.FILES["image"]
+        title = kwargs.get("portfolio_title")
+        port = None
+        if title:
+            try:
+                port = Portfolio.objects.get(owner=info.context.user, title=title)
+            except:
+                port = Portfolio.objects.create(owner=info.context.user, title=title)
+        else:
+            return CreateProject(ok=False, message="Please provide a portfolio title")
         try:
             project = Project.objects.create(
                 name=name,
                 description=description,
-                image=image,
+                image=post,
                 deployed_at=de_at,
                 code_url=co_u,
+                portfolio=port,
             )
             message = f"Successfully created {project.name} with {project.image.photo}"
             ok = True
         except Exception as err:
-            message = f"Fail to create {project.name}"
-            ok = False
+            message = f"Failed {err}"
+            ok = False if "no attribute 'photo'" not in str(err) else True
+            if ok:
+                message = f"Warning {err}"
         return CreateProject(ok=ok, message=message)
 
 
