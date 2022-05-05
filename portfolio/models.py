@@ -21,10 +21,14 @@ class Project(models.Model):
     image = models.ImageField(upload_to=project_dir_path)
     deployed_at = models.URLField()
     code_url = models.URLField()
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="projects")
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name="projects"
+    )
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["name"], name="unique project")]
+        constraints = [
+            models.UniqueConstraint(fields=["name", 'portfolio'], name="unique project")
+        ]
 
     def __str__(self):
         return f"Project:{self.name}:{self.portfolio.owner.username}"
@@ -33,10 +37,12 @@ class Project(models.Model):
 class Skill(models.Model):
     name = models.CharField(max_length=100)
     image = models.ImageField(upload_to=skill_dir_path)
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="skills")
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name="skills"
+    )
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["name"], name="unique skill")]
+        constraints = [models.UniqueConstraint(fields=["name", 'portfolio'], name="unique skill")]
 
     def __str__(self):
         return f"Skill:{self.name}:{self.portfolio.owner.username}"

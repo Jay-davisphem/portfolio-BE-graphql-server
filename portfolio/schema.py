@@ -2,39 +2,23 @@ from django.contrib.auth import get_user_model
 import django
 
 import graphene
-from graphene_django import DjangoObjectType
-from graphene_file_upload.scalars import Upload
 
-import graphql
 import graphql_jwt
 from graphql_jwt.decorators import login_required
+
 from .models import Portfolio, Project, Skill
+from .gql.types import UserType, PortfolioType, ProjectType, SkillType
+from .gql.mutations import (
+    CreateUser,
+    UpdateUser,
+    DeleteUser,
+    CreatePortfolio,
+    CreateProject,
+    UpdateProject,
+    CreateSkill,
+)
 
 User = get_user_model()
-
-
-class UserType(DjangoObjectType):
-    class Meta:
-        model = User
-        fields = ("username", "email", "id")
-
-
-class PortfolioType(DjangoObjectType):
-    class Meta:
-        model = Portfolio
-        fields = "__all__"
-
-
-class ProjectType(DjangoObjectType):
-    class Meta:
-        model = Project
-        fields = "__all__"
-
-
-class SkillType(DjangoObjectType):
-    class Meta:
-        model = Skill
-        fields = "__all__"
 
 
 class Query(graphene.ObjectType):
@@ -44,11 +28,11 @@ class Query(graphene.ObjectType):
     get_portfolios = graphene.List(PortfolioType)
 
     @login_required
-    def resolve_me(self, info, **kwarg):
+    def resolve_me(self, info, **kwargs):
         return info.context.user
 
     def resolve_users(self, info):
-        return get_user_model().objects.all()
+        return User.objects.all()
 
     @login_required
     def resolve_get_portfolio(self, info, title):
@@ -61,146 +45,6 @@ class Query(graphene.ObjectType):
         return Portfolio.objects.select_related("owner").filter(owner=info.context.user)
 
 
-class CreateUser(graphene.Mutation):
-    message = graphene.String()
-    user = graphene.Field(UserType)
-    ok = graphene.Boolean()
-
-    class Arguments:
-        username = graphene.String(required=True)
-        password = graphene.String(required=True)
-        email = graphene.String()
-
-    def mutate(self, info, username, password, email=None):
-        if info.context.user.is_anonymous:
-            user = User.objects.create_user(username=username, email=email)
-            user.set_password(password)
-            user.save()
-            return CreateUser(
-                ok=True, user=user, message=f"Successfully created user {user.username}"
-            )
-        return CreateUser(
-            ok=False,
-            message=f"User {info.context.user.username} is logged in!. Failed to create new account ):.",
-            user=info.context.user,
-        )
-
-
-class UpdateUser(graphene.Mutation):
-    message = graphene.String()
-    user = graphene.Field(UserType)
-    ok = graphene.Boolean()
-
-    class Arguments:
-        username = graphene.String()
-        password = graphene.String()
-        email = graphene.String()
-
-    @login_required
-    def mutate(self, info, **kwargs):
-        username = info.context.user.username
-        email = info.context.user.email
-
-        user = get_user_model().objects.get(username=username)
-
-        if user or user.is_superuser:
-            user.username = kwargs.get("username", username)
-            user.email = kwargs.get("email", email)
-            if kwargs.get("password", ""):
-                user.set_password(kwargs.get("password"))
-            user.save()
-
-            return UpdateUser(ok=True, message="User details updated", user=user)
-        return UpdateUser(ok=False, message="Can only update personal data!")
-
-
-class DeleteUser(graphene.Mutation):
-    message = graphene.String()
-    ok = graphene.Boolean()
-
-    class Arguments:
-        username = graphene.String(required=True)
-
-    @login_required
-    def mutate(self, info, username):
-        if info.context.user.is_superuser and info.context.user.username != username:
-            user = get_user_model().objects.get(username=username).delete()
-            return DeleteUser(message=f"{user} deleted!", ok=True)
-        return DeleteUser(message="Not deleted!", ok=False)
-
-
-class CreatePortfolio(graphene.Mutation):
-    ok = graphene.Boolean()
-    message = graphene.String()
-
-    class Arguments:
-        title = graphene.String(required=True)
-
-    @login_required
-    def mutate(self, info, title):
-        try:
-            Portfolio.objects.create(owner=info.context.user, title=title)
-            ok = True
-            message = f"Portfolio {title} created for user {info.context.user.username}"
-        except django.db.utils.IntegrityError as err:
-            ok = False
-            message = f"{err}"
-        except:
-            ok = False
-            message = (
-                f"Cannot create portfolio {title} for user {info.context.user.username}"
-            )
-        return CreatePortfolio(ok=ok, message=message)
-
-
-class CreateProject(graphene.Mutation):
-    ok = graphene.Boolean()
-    message = graphene.String()
-
-    class Arguments:
-        name = graphene.String(required=True)
-        description = graphene.String(required=True)
-        image = Upload(description="Project image")
-        deployed_at = graphene.String(required=True)
-        code_url = graphene.String()
-        portfolio_title = graphene.String()
-
-    @login_required
-    def mutate(self, info, **kwargs):
-
-        name = kwargs.get("name")
-        description = kwargs.get("description")
-        de_at = kwargs.get("deployed_at")
-        co_u = kwargs.get("code_url", "")
-        post = info.context.FILES["image"]
-        title = kwargs.get("portfolio_title")
-        port = None
-        if title:
-            try:
-                port = Portfolio.objects.get(owner=info.context.user, title=title)
-            except:
-                port = Portfolio.objects.create(owner=info.context.user, title=title)
-        else:
-            return CreateProject(ok=False, message="Please provide a portfolio title")
-        try:
-            project = Project.objects.create(
-                name=name,
-                description=description,
-                image=post,
-                deployed_at=de_at,
-                code_url=co_u,
-                portfolio=port,
-            )
-            message = f"Successfully created {project.name} with {project.image.photo}"
-            ok = True
-        except Exception as err:
-            message = f"Failed {err}"
-            ok = False if "no attribute 'photo'" not in str(err) else True
-            if ok:
-                message = f"Warning {err}"
-        return CreateProject(ok=ok, message=message)
-
-
 class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
@@ -210,6 +54,8 @@ class Mutation(graphene.ObjectType):
     delete_user = DeleteUser.Field()
     create_portfolio = CreatePortfolio.Field()
     create_project = CreateProject.Field()
+    update_project = UpdateProject.Field()
+    create_skill = CreateSkill.Field()
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
