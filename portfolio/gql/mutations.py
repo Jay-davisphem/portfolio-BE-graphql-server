@@ -3,6 +3,9 @@ from graphene_file_upload.scalars import Upload
 
 import django
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.core.mail import send_mail, send_mass_mail
+from django.template import loader
 
 from graphql_jwt.decorators import login_required
 
@@ -13,20 +16,54 @@ User = get_user_model()
 
 
 class CreateUser(graphene.Mutation):
-    message = graphene.String()
-    user = graphene.Field(UserType)
-    ok = graphene.Boolean()
+    message = graphene.String(description="Message returned from creation!")
+    user = graphene.Field(UserType, description="User returned from creation!")
+    ok = graphene.Boolean(description="Ok status")
 
     class Arguments:
-        username = graphene.String(required=True)
-        password = graphene.String(required=True)
-        email = graphene.String()
+        username = graphene.String(required=True, description="Unique username")
+        password = graphene.String(required=True, description='password')
+        email = graphene.String(description='Unique email')
 
     def mutate(self, info, username, password, email=None):
+        if email == settings.EMAIL_HOST_USER:
+            raise TypeError("Contrained! You can user email %s" % (email))
         if info.context.user.is_anonymous:
-            user = User.objects.create_user(username=username, email=email)
+            try:
+                User.objects.get(email=email)
+                return CreateUser(
+                    ok=False,
+                    message=f"User email {email} exists!",
+                )
+            except:
+                pass
+            user = User(username=username, email=email)
             user.set_password(password)
+
+            subject = "Welcome to daviSPhem portfolio api"
+
+            message = f"Hi {username}, thank you for using our api."
+            html_message = loader.render_to_string(
+                "email.html",
+                {"username": username, "subject": subject, "message": message},
+            )
+            print(html_message)
+            email_from = settings.EMAIL_HOST_USER
+            recipient_list = [
+                email,
+            ]
             user.save()
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    email_from,
+                    recipient_list,
+                    html_message=html_message,
+                )
+            except Exception as err:
+                User.objects.get(username=username).delete()
+                raise err
             return CreateUser(
                 ok=True, user=user, message=f"Successfully created user {user.username}"
             )
@@ -214,3 +251,28 @@ class CreateSkill(graphene.Mutation):
         )
         Skill.objects.create(name=name, image=image, portfolio=portfolio[0])
         return CreateSkill(ok=True, message=f"{name} Skill Created")
+
+
+class ContactMe(graphene.Mutation):
+    ok = graphene.Boolean()
+    message = graphene.String()
+
+    class Arguments:
+        email = graphene.String(required=True)
+        message = graphene.String(required=True)
+
+    def mutate(self, info, email, message):
+        admin_mail = settings.EMAIL_HOST_USER
+        admin_message = ("Hi, I am %s" % email, message, admin_mail, [admin_mail])
+        user_message = (
+            "Message from David Oluwafemi",
+            "This is an automatic response, I'll respond soon.",
+            admin_mail,
+            [email],
+        )
+
+        try:
+            send_mass_mail((admin_message, user_message), fail_silently=False)
+            return ContactMe(ok=True, message="Message sent to %s!" % admin_mail)
+        except:
+            return ContactMe(ok=False, message="Message not sent!")

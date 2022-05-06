@@ -16,6 +16,7 @@ from .gql.mutations import (
     CreateProject,
     UpdateProject,
     CreateSkill,
+    ContactMe,
 )
 
 User = get_user_model()
@@ -26,6 +27,9 @@ class Query(graphene.ObjectType):
     users = graphene.List(UserType)
     get_portfolio = graphene.Field(PortfolioType, title=graphene.String(required=True))
     get_portfolios = graphene.List(PortfolioType)
+
+    class Meta:
+        description = "Root Query resolvers"
 
     @login_required
     def resolve_me(self, info, **kwargs):
@@ -46,6 +50,9 @@ class Query(graphene.ObjectType):
 
 
 class Mutation(graphene.ObjectType):
+    class Meta:
+        description = "Root Mutation resolvers!"
+
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
@@ -56,6 +63,7 @@ class Mutation(graphene.ObjectType):
     create_project = CreateProject.Field()
     update_project = UpdateProject.Field()
     create_skill = CreateSkill.Field()
+    send_message = ContactMe.Field()
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
