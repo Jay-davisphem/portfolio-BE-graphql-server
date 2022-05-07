@@ -1,0 +1,19 @@
+[
+  {
+    "model": "auth.user",
+    "pk": 1,
+    "fields": {
+      "username": "davisphem",
+      "email": "davis@gmail.com",
+      "password": "jdfdhfgdfgshgfywftyetyuehiuewhuwgeyged"
+    }
+  },
+  {
+    "model": "portfolio.Portfolio",
+    "pk": 1,
+    "fields": {
+      "owner": 1,
+      "title": "frontend"
+    }
+  }
+]

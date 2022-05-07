@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 import os
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +26,7 @@ SECRET_KEY = os.getenv(
     "django-insecure-&r-#r$l^#mf!esdu$^e17p%==nvf(dp$ifgkkqe4bi_-8#=eps",
 )
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "") != "False" 
+DEBUG = os.getenv("DJANGO_DEBUG", "") != "False"
 
 ALLOWED_HOSTS = ["localhost", "femi-portfolio-backend.herokuqpp.com"]
 
@@ -61,7 +62,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / 'templates'],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -122,8 +123,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-MEDIA_ROOT = 'media/images'
-MEDIA_URL = 'media/'
+MEDIA_ROOT = "media/images"
+MEDIA_URL = "media/"
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -134,6 +135,7 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+GRAPHQL_JWT = {"JWT_ALLOW_ANY_HANDLER": "portfolio.allow_any"}
 GRAPHENE = {
     "SCHEMA": "portfolio.schema.schema",
     "MIDDLEWARE": [
@@ -148,16 +150,14 @@ AUTHENTICATION_BACKENDS = [
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'davidoluwafemi178@gmail.com'
-EMAIL_HOST_PASSWORD = os.getenv('MY_EMAIL_PWD')
+EMAIL_HOST_USER = "davidoluwafemi178@gmail.com"
+EMAIL_HOST_PASSWORD = os.getenv("MY_EMAIL_PWD")
 
 import dj_database_url
 
 db_from_env = dj_database_url.config(conn_max_age=500)
 DATABASES["default"].update(db_from_env)
-
-
