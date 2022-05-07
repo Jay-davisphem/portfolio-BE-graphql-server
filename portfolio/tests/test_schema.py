@@ -3,10 +3,10 @@ from graphene.test import Client
 # from snapshottest.django import TestCase
 
 from django.test import TestCase
-from django.contrib.auth.models import User, AnonymousUser
+from django.contrib.auth.models import User
 
 from ..schema import schema
-from ..models import Portfolio, Project, Skill
+from ..models import Portfolio
 
 
 def assertMatch(self, exe, res=None):
